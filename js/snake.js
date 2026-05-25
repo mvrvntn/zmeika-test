@@ -1,38 +1,127 @@
-// snake.js — Snake class
-import { DIR, GRID, COLS, ROWS, CONFIG } from './config.js';
+// snake.js — Snake entity class
+
+import { DIR, CELL_BY_DIR, isOpposite, CONFIG } from './config.js';
+
 export class Snake {
-  constructor(id, startX, startY) {
+  /**
+   * @param {string} id
+   * @param {{x:number, y:number}} startPos
+   * @param {string} initialDir
+   * @param {string} skinId
+   */
+  constructor(id, startPos, initialDir = DIR.RIGHT, skinId = CONFIG.defaultSkin) {
     this.id = id;
-    this.segments = [{x: startX, y: startY}, {x: startX-1, y: startY}, {x: startX-2, y: startY}];
-    this.direction = DIR.RIGHT;
-    this.nextDirection = DIR.RIGHT;
-    this.growPending = false;
+    this.skinId = skinId;
+    this.direction = initialDir;
+    this.nextDirection = initialDir;
     this.alive = true;
     this.score = 0;
-  }
-  head() { return this.segments[0]; }
-  move(dir) {
-    this.direction = dir;
-    const h = this.head();
-    let head = {x: h.x + dir.x, y: h.y + dir.y};
-    if (CONFIG.wallMode === 'no_walls') {
-      if (head.x < 0) head.x = COLS - 1;
-      if (head.x >= COLS) head.x = 0;
-      if (head.y < 0) head.y = ROWS - 1;
-      if (head.y >= ROWS) head.y = 0;
+    this.foodEaten = 0;
+    this.goldEaten = 0;
+    this.isBot = false;
+
+    // Initialize with 3 segments
+    this.segments = [];
+    const cell = CELL_BY_DIR[initialDir];
+    for (let i = 2; i >= 0; i--) {
+      this.segments.push({
+        x: startPos.x - cell.x * i,
+        y: startPos.y - cell.y * i,
+      });
     }
-    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { this.alive = false; return head; }
-    if (this.growPending) { this.segments.unshift(head); this.growPending = false; }
-    else { this.segments.unshift(head); this.segments.pop(); }
-    if (this.collidesSelf()) { this.alive = false; }
-    return head;
   }
-  grow() { this.growPending = true; }
-  collidesSelf() { const h = this.head(); return this.segments.slice(1).some(s => s.x === h.x && s.y === h.y); }
-  collidesWith(snake) { const h = this.head(); return snake.segments.some(s => s.x === h.x && s.y === h.y); }
-  reset(x, y) {
-    this.segments = [{x:x,y:y},{x:x-1,y:y},{x:x-2,y:y}];
-    this.direction = DIR.RIGHT; this.nextDirection = DIR.RIGHT;
-    this.growPending = false; this.alive = true; this.score = 0;
+
+  headPosition() {
+    return this.segments[this.segments.length - 1];
+  }
+
+  bodyPositions() {
+    return this.segments.slice(0, -1);
+  }
+
+  length() {
+    return this.segments.length;
+  }
+
+  occupies(point) {
+    return this.segments.some(s => s.x === point.x && s.y === point.y);
+  }
+
+  setDirection(dir) {
+    if (!isOpposite(dir, this.direction)) {
+      this.nextDirection = dir;
+    }
+  }
+
+  move() {
+    if (!this.alive) return null;
+
+    this.direction = this.nextDirection;
+    const cell = CELL_BY_DIR[this.direction];
+    const head = this.headPosition();
+    const newHead = {
+      x: head.x + cell.x,
+      y: head.y + cell.y,
+    };
+    this.segments.push(newHead);
+    this.segments.shift(); // remove tail
+    return newHead;
+  }
+
+  grow() {
+    // Duplicate the last segment (tail) to grow
+    const tail = this.segments[0];
+    this.segments.unshift({ ...tail });
+  }
+
+  shrink() {
+    // Remove tail segment (when eating slow food effect)
+    if (this.segments.length > 2) {
+      this.segments.shift();
+    }
+  }
+
+  collidesSelf() {
+    const head = this.headPosition();
+    return this.bodyPositions().some(s => s.x === head.x && s.y === head.y);
+  }
+
+  collidesWall(gridCols, gridRows) {
+    const head = this.headPosition();
+    return head.x < 0 || head.x >= gridCols || head.y < 0 || head.y >= gridRows;
+  }
+
+  collidesWith(otherSnake) {
+    const head = this.headPosition();
+    return otherSnake.segments.some(s => s.x === head.x && s.y === head.y);
+  }
+
+  reset(startPos, initialDir = DIR.RIGHT) {
+    this.direction = initialDir;
+    this.nextDirection = initialDir;
+    this.alive = true;
+    this.score = 0;
+    this.foodEaten = 0;
+    this.goldEaten = 0;
+    this.segments = [];
+    const cell = CELL_BY_DIR[initialDir];
+    for (let i = 2; i >= 0; i--) {
+      this.segments.push({
+        x: startPos.x - cell.x * i,
+        y: startPos.y - cell.y * i,
+      });
+    }
+  }
+
+  getState() {
+    return {
+      id: this.id,
+      isBot: this.isBot,
+      alive: this.alive,
+      score: this.score,
+      skinId: this.skinId,
+      segments: this.segments.map(s => ({ x: s.x, y: s.y })),
+      direction: this.direction,
+    };
   }
 }

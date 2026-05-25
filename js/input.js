@@ -1,47 +1,132 @@
-// input.js — Input manager (keyboard + touch)
-import { DIR, isOpposite, CONFIG } from './config.js';
+// input.js — InputManager (keyboard + touch/swipe)
+
+import { DIR, CONFIG } from './config.js';
+
 export class InputManager {
   constructor() {
-    this.p1Dir = null; this.p2Dir = null; this.keys = {};
-    this.touchStartX = 0; this.touchStartY = 0;
-    this.onPause = null; this.onEnter = null;
-    this._onKey = this._onKey.bind(this);
-    this._onTouchStart = this._onTouchStart.bind(this);
-    this._onTouchEnd = this._onTouchEnd.bind(this);
+    this.listeners = new Map(); // playerId -> { keys, callback }
+    this.lastDirection = new Map(); // playerId -> Direction
+    this.onKeyDownBound = this.#onKeyDown.bind(this);
+    this.onTouchStartBound = this.#onTouchStart.bind(this);
+    this.onTouchEndBound = this.#onTouchEnd.bind(this);
+    this.touchStartPos = null;
+    this.swipeEnabled = false;
+    this.canvas = null;
   }
-  attach(canvas) {
-    document.addEventListener('keydown', this._onKey);
-    canvas.addEventListener('touchstart', this._onTouchStart, {passive:true});
-    canvas.addEventListener('touchend', this._onTouchEnd, {passive:true});
+
+  /**
+   * Bind keyboard keys to a player
+   * @param {string} playerId
+   * @param {{up:string, down:string, left:string, right:string}} keys
+   */
+  bindForPlayer(playerId, keys) {
+    this.listeners.set(playerId, {
+      keys,
+      pressed: new Set(),
+    });
+    this.lastDirection.set(playerId, null);
+
+    if (this.listeners.size === 1) {
+      window.addEventListener('keydown', this.onKeyDownBound);
+    }
   }
-  detach() {
-    document.removeEventListener('keydown', this._onKey);
+
+  /**
+   * Enable swipe input on a canvas element
+   * @param {HTMLCanvasElement} canvas
+   * @param {number} threshold
+   */
+  enableSwipe(canvas, threshold) {
+    this.canvas = canvas;
+    this.swipeThreshold = threshold || CONFIG.swipeThreshold;
+    this.swipeEnabled = true;
+    canvas.addEventListener('touchstart', this.onTouchStartBound, { passive: true });
+    canvas.addEventListener('touchend', this.onTouchEndBound, { passive: true });
   }
-  _onKey(e) {
-    const k = e.key;
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D',' ','Escape','Enter'].includes(k)) e.preventDefault();
-    if (k===' '||k==='Escape') { if(this.onPause) this.onPause(); return; }
-    if (k==='Enter') { if(this.onEnter) this.onEnter(); return; }
-    this.keys[k] = true;
-    // Player 1: arrows
-    if (k==='ArrowUp' && CONFIG.gameMode!=='2p') this.p1Dir = DIR.UP;
-    else if (k==='ArrowDown' && CONFIG.gameMode!=='2p') this.p1Dir = DIR.DOWN;
-    else if (k==='ArrowLeft') this.p1Dir = DIR.LEFT;
-    else if (k==='ArrowRight') this.p1Dir = DIR.RIGHT;
-    // Player 2: WASD
-    if (k==='w'||k==='W') this.p2Dir = DIR.UP;
-    else if (k==='s'||k==='S') this.p2Dir = DIR.DOWN;
-    else if (k==='a'||k==='A') this.p2Dir = DIR.LEFT;
-    else if (k==='d'||k==='D') this.p2Dir = DIR.RIGHT;
+
+  disableSwipe() {
+    if (this.canvas) {
+      this.canvas.removeEventListener('touchstart', this.onTouchStartBound);
+      this.canvas.removeEventListener('touchend', this.onTouchEndBound);
+    }
+    this.swipeEnabled = false;
   }
-  getP1Direction(current) { const d=this.p1Dir; this.p1Dir=null; return d && !isOpposite(d,current) ? d : null; }
-  getP2Direction(current) { const d=this.p2Dir; this.p2Dir=null; return d && !isOpposite(d,current) ? d : null; }
-  _onTouchStart(e) { const t=e.touches[0]; this.touchStartX=t.clientX; this.touchStartY=t.clientY; }
-  _onTouchEnd(e) {
-    const t=e.changedTouches[0];
-    const dx=t.clientX-this.touchStartX, dy=t.clientY-this.touchStartY;
-    if (Math.max(Math.abs(dx),Math.abs(dy))<20) return;
-    if (Math.abs(dx)>Math.abs(dy)) this.p1Dir = dx>0 ? DIR.RIGHT : DIR.LEFT;
-    else this.p1Dir = dy>0 ? DIR.DOWN : DIR.UP;
+
+  #onKeyDown(e) {
+    const key = e.key;
+    for (const [playerId, { keys }] of this.listeners) {
+      let dir = null;
+      if (key === keys.up) dir = DIR.UP;
+      else if (key === keys.down) dir = DIR.DOWN;
+      else if (key === keys.left) dir = DIR.LEFT;
+      else if (key === keys.right) dir = DIR.RIGHT;
+
+      if (dir) {
+        e.preventDefault();
+        this.lastDirection.set(playerId, dir);
+      }
+    }
+  }
+
+  #onTouchStart(e) {
+    const touch = e.touches[0];
+    this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+  }
+
+  #onTouchEnd(e) {
+    if (!this.touchStartPos) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - this.touchStartPos.x;
+    const dy = touch.clientY - this.touchStartPos.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (Math.max(absDx, absDy) < this.swipeThreshold) return;
+
+    let dir;
+    if (absDx > absDy) {
+      dir = dx > 0 ? DIR.RIGHT : DIR.LEFT;
+    } else {
+      dir = dy > 0 ? DIR.DOWN : DIR.UP;
+    }
+
+    // Send swipe to player1 (default)
+    const firstPlayer = this.listeners.keys().next().value;
+    if (firstPlayer) {
+      this.lastDirection.set(firstPlayer, dir);
+    }
+
+    this.touchStartPos = null;
+  }
+
+  /**
+   * Get the current direction for a player, then clear it
+   * @param {string} playerId
+   * @returns {string|null}
+   */
+  getCurrentInput(playerId) {
+    const dir = this.lastDirection.get(playerId);
+    if (dir) {
+      this.lastDirection.set(playerId, null);
+    }
+    return dir || null;
+  }
+
+  /**
+   * Register callback when direction changes
+   * @param {string} playerId
+   * @param {function} callback
+   */
+  onDirectionChange(playerId, callback) {
+    // Immediately check each frame — not event-based, but we expose a poll API
+    this._changeCallbacks = this._changeCallbacks || new Map();
+    this._changeCallbacks.set(playerId, callback);
+  }
+
+  unbindAll() {
+    window.removeEventListener('keydown', this.onKeyDownBound);
+    this.disableSwipe();
+    this.listeners.clear();
+    this.lastDirection.clear();
   }
 }
