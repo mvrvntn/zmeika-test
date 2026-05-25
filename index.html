@@ -207,23 +207,25 @@
       ctx.beginPath(); ctx.moveTo(0, i * GRID); ctx.lineTo(400, i * GRID); ctx.stroke();
     }
 
-    // Apple
-    ctx.shadowColor = '#ff0040'; ctx.shadowBlur = 15;
-    ctx.fillStyle = '#ff0040';
-    ctx.beginPath();
-    ctx.arc(apple.position.x * GRID + GRID/2, apple.position.y * GRID + GRID/2, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    // Apple (skip if not initialized yet)
+    if (apple && apple.position) {
+      ctx.shadowColor = '#ff0040'; ctx.shadowBlur = 15;
+      ctx.fillStyle = '#ff0040';
+      ctx.beginPath();
+      ctx.arc(apple.position.x * GRID + GRID/2, apple.position.y * GRID + GRID/2, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
 
     // Snake
-    snake.segments.forEach((seg, i) => {
-      const isHead = i === 0;
-      ctx.shadowColor = '#00ff41';
-      ctx.shadowBlur = isHead ? 20 : 10;
-      ctx.fillStyle = isHead ? '#00ff41' : '#00cc33';
-      const pad = 1;
-      ctx.fillRect(seg.x * GRID + pad, seg.y * GRID + pad, GRID - pad*2, GRID - pad*2);
-    });
+    if (snake && snake.segments) snake.segments.forEach((seg, i) => {
+        const isHead = i === 0;
+        ctx.shadowColor = '#00ff41';
+        ctx.shadowBlur = isHead ? 20 : 10;
+        ctx.fillStyle = isHead ? '#00ff41' : '#00cc33';
+        const pad = 1;
+        ctx.fillRect(seg.x * GRID + pad, seg.y * GRID + pad, GRID - pad*2, GRID - pad*2);
+      });
     ctx.shadowBlur = 0;
 
     // Overlay
