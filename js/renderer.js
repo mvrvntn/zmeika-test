@@ -368,7 +368,7 @@ export class Renderer {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(popup.icon + ' Achievement Unlocked!', popupX + 12, popupY + 18);
+    ctx.fillText(popup.icon + ' Достижение открыто!', popupX + 12, popupY + 18);
 
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#a0a0a0';
@@ -406,7 +406,7 @@ export class Renderer {
       ctx.fill();
 
       ctx.fillStyle = '#e0e0e0';
-      ctx.fillText(`${label} SCORE: ${e.score}`, x, y);
+      ctx.fillText(`${label} СЧЁТ: ${e.score}`, x, y);
       ctx.fillStyle = '#808080';
       ctx.font = '10px monospace';
       ctx.fillText(`len: ${e.segments?.length || 0}`, x, y + 14);

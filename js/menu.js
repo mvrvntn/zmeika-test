@@ -83,7 +83,7 @@ export class MenuManager {
       <div class="menu-actions">
         <button class="btn-cta" id="btn-start">▸ START GAME</button>
         <button class="btn-secondary" id="btn-skins">SELECT SKIN</button>
-        <button class="btn-secondary" id="btn-achievements">ACHIEVEMENTS</button>
+        <button class="btn-secondary" id="btn-achievements">ДОСТИЖЕНИЯ</button>
       </div>
     `;
 
@@ -258,7 +258,7 @@ export class MenuManager {
     const wrapper = document.createElement('div');
     wrapper.className = 'menu-wrapper';
     wrapper.innerHTML = `
-      <h2 class="menu-title">ACHIEVEMENTS <span class="progress-text">${progress}</span></h2>
+      <h2 class="menu-title">ДОСТИЖЕНИЯ <span class="progress-text">${progress}</span></h2>
       <div class="progress-bar-container">
         <div class="progress-bar-fill" style="width:${achievementManager.getProgressPercent()}%"></div>
       </div>
@@ -324,7 +324,7 @@ export class MenuManager {
     const wrapper = document.createElement('div');
     wrapper.className = 'menu-wrapper gameover-wrapper';
     wrapper.innerHTML = `
-      <h1 class="menu-title gameover-title">GAME OVER</h1>
+      <h1 class="menu-title gameover-title" id="gameOverTitle">ИГРА ОКОНЧЕНА</h1>
       <div class="gameover-score">${p1.score}</div>
       <div class="gameover-stats">
         <div>🐍 Length: ${p1.segments?.length || 0}</div>
@@ -365,7 +365,7 @@ export class MenuManager {
     const overlay = document.createElement('div');
     overlay.className = 'pause-overlay';
     overlay.innerHTML = `
-      <h2 class="pause-title">PAUSED</h2>
+      <h2 class="pause-title">ПАУЗА</h2>
       <div class="pause-actions">
         <button class="btn-cta" id="btn-resume">▸ RESUME</button>
         <button class="btn-secondary" id="btn-restart-pause">RESTART</button>

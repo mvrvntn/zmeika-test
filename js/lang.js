@@ -1,0 +1,52 @@
+// lang.js — i18n localization (RU / EN)
+export const LANG = {
+  ru: {
+    title: '▶ ЗМЕЙКА v4',
+    modeSelect: 'ВЫБОР РЕЖИМА', mode1p: '1 ИГРОК', mode2p: '2 ИГРОКА', modeBot: 'ПРОТИВ БОТА',
+    skinSelect: 'ВЫБОР СКИНА', achieved: 'ДОСТИЖЕНИЯ', pause: 'ПАУЗА',
+    gameOver: 'ИГРА ОКОНЧЕНА', playAgain: '▶ ИГРАТЬ СНОВА',
+    score: 'СЧЁТ', best: 'ЛУЧШИЙ', difficulty: 'СЛОЖНОСТЬ',
+    diffEasy: 'Лёгкий', diffMedium: 'Средний', diffHard: 'Сложный', diffInsane: 'Безумие',
+    wallOn: 'СТЕНЫ: ВКЛ', wallOff: 'СТЕНЫ: ВЫКЛ',
+    player1: 'ИГРОК 1', player2: 'ИГРОК 2', bot: 'БОТ',
+    pausedText: '⏸ ПАУЗА', resume: 'нажмите ПРОБЕЛ или ESC',
+    skinNeon: 'Неон', skinClassic: 'Классика', skinFire: 'Огонь', skinIce: 'Лёд', skinGold: 'Золото',
+    achFirst: 'Первый укус', achFirstDesc: 'Съешь первую еду',
+    achTen: 'Двузначное число', achTenDesc: 'Набери 10 очков',
+    achFifty: 'Полсотни', achFiftyDesc: 'Набери 50 очков',
+    achNoWall: 'Свободный дух', achNoWallDesc: '10 очков без стен',
+    achSpeed: 'Скорость света', achSpeedDesc: '20 очков на Сложном+',
+    achBot: 'Убийца ботов', achBotDesc: 'Победи бота',
+    achUnlocked: 'ПОЛУЧЕНО!',
+    btnSkin: '🎨 СКИН', btnAch: '🏆 ДОСТИЖ.', btnLang: 'EN',
+    pressEnter: 'нажмите ENTER', pressEnterStart: 'нажмите ENTER чтобы начать',
+    lvlEasy: 'Лёгкий (200ms)', lvlMedium: 'Средний (150ms)', lvlHard: 'Сложный (100ms)', lvlInsane: 'Безумие (60ms)',
+    modeTitle: '▶ {0}', skinTitle: '▶ {0}', achTitle: 'ДОСТИЖЕНИЯ ({0}/{1})',
+  },
+  en: {
+    title: '▶ SNAKE v4',
+    modeSelect: 'SELECT MODE', mode1p: '1 PLAYER', mode2p: '2 PLAYERS', modeBot: 'VS BOT',
+    skinSelect: 'SELECT SKIN', achieved: 'ACHIEVEMENTS', pause: 'PAUSED',
+    gameOver: 'GAME OVER', playAgain: '▶ PLAY AGAIN',
+    score: 'SCORE', best: 'BEST', difficulty: 'DIFFICULTY',
+    diffEasy: 'Easy', diffMedium: 'Medium', diffHard: 'Hard', diffInsane: 'Insane',
+    wallOn: 'WALLS: ON', wallOff: 'WALLS: OFF',
+    player1: 'PLAYER 1', player2: 'PLAYER 2', bot: 'BOT',
+    pausedText: '⏸ PAUSED', resume: 'press SPACE or ESC',
+    skinNeon: 'Neon', skinClassic: 'Classic', skinFire: 'Fire', skinIce: 'Ice', skinGold: 'Gold',
+    achFirst: 'First Bite', achFirstDesc: 'Eat your first food',
+    achTen: 'Double Digits', achTenDesc: 'Reach score 10',
+    achFifty: 'Half Century', achFiftyDesc: 'Reach score 50',
+    achNoWall: 'Free Spirit', achNoWallDesc: '10 pts with walls off',
+    achSpeed: 'Speed Demon', achSpeedDesc: '20 pts on Hard+',
+    achBot: 'Bot Killer', achBotDesc: 'Defeat the bot',
+    achUnlocked: 'UNLOCKED!',
+    btnSkin: '🎨 SKIN', btnAch: '🏆 ACHIEV.', btnLang: 'RU',
+    pressEnter: 'press ENTER', pressEnterStart: 'press ENTER to start',
+    lvlEasy: 'Easy (200ms)', lvlMedium: 'Medium (150ms)', lvlHard: 'Hard (100ms)', lvlInsane: 'Insane (60ms)',
+    modeTitle: '▶ {0}', skinTitle: '▶ {0}', achTitle: 'ACHIEVEMENTS ({0}/{1})',
+  }
+};
+export let currentLang = 'ru';
+export function setLang(l) { currentLang = l; }
+export function t(key) { return LANG[currentLang][key] || LANG.en[key] || key; }
