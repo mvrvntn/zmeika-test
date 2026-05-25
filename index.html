@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Змейка — Snake Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0e14;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; font-family: system-ui, monospace;
+      overflow: hidden;
+    }
+    .game-wrapper {
+      background: #0d1117;
+      padding: 30px; border-radius: 12px;
+      box-shadow: 0 0 40px rgba(0,255,65,0.15), inset 0 0 60px rgba(0,255,65,0.03);
+      border: 1px solid rgba(0,255,65,0.15);
+    }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 4px 16px 4px;
+    }
+    h1 {
+      font-size: 14px; letter-spacing: 6px; text-transform: uppercase;
+      color: #00ff41; text-shadow: 0 0 20px rgba(0,255,65,0.6);
+      font-family: 'Courier New', monospace;
+    }
+    .score {
+      font-size: 16px; color: #00ff41; font-family: 'Courier New', monospace;
+      text-shadow: 0 0 10px rgba(0,255,65,0.4);
+    }
+    .score span { color: #00d4ff; text-shadow: 0 0 15px rgba(0,212,255,0.6); }
+    canvas {
+      display: block; border: 2px solid #00ff41;
+      box-shadow: 0 0 25px rgba(0,255,65,0.2), inset 0 0 15px rgba(0,255,65,0.05);
+      border-radius: 4px; background: #0d1117;
+      width: 400px; height: 400px;
+    }
+    .controls {
+      display: flex; justify-content: center; gap: 8px; padding-top: 14px;
+    }
+    .controls .hint {
+      font-size: 11px; color: rgba(0,255,65,0.4); letter-spacing: 2px;
+      font-family: 'Courier New', monospace;
+    }
+    @keyframes glitch {
+      0% { transform: translate(0); filter: hue-rotate(0deg); }
+      20% { transform: translate(-3px, 2px); filter: hue-rotate(90deg); }
+      40% { transform: translate(3px, -2px); filter: hue-rotate(180deg); }
+      60% { transform: translate(-2px, 1px); filter: hue-rotate(270deg); }
+      80% { transform: translate(2px, -1px); filter: hue-rotate(360deg); }
+      100% { transform: translate(0); filter: hue-rotate(0deg); }
+    }
+    .glitch { animation: glitch 0.5s ease-in-out; }
+  </style>
+</head>
+<body>
+<div class="game-wrapper">
+  <div class="header">
+    <h1>▶ SNAKE</h1>
+    <div class="score">🍎 <span id="scoreDisplay">0</span></div>
+  </div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="controls">
+    <span class="hint">← ↑ → ↓</span>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+
+  const GRID = 20;
+  const COLS = 20;
+  const ROWS = 20;
+  const TICK_MS = 150;
+
+  const GameState = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
+  let state = GameState.MENU;
+  let score = 0;
+  let snake, apple, direction, nextDirection, gameLoop;
+
+  class Snake {
+    constructor() {
+      this.segments = [
+        { x: 9, y: 10 },
+        { x: 8, y: 10 },
+        { x: 7, y: 10 }
+      ];
+      this.growPending = false;
+    }
+    head() { return this.segments[0]; }
+    move(dir) {
+      const head = { x: this.head().x + dir.x, y: this.head().y + dir.y };
+      if (this.growPending) {
+        this.segments.unshift(head);
+        this.growPending = false;
+      } else {
+        this.segments.unshift(head);
+        this.segments.pop();
+      }
+      return head;
+    }
+    grow() { this.growPending = true; }
+    collidesWith(pos) {
+      return this.segments.some(s => s.x === pos.x && s.y === pos.y);
+    }
+    collidesWall(pos) {
+      return pos.x < 0 || pos.x >= COLS || pos.y < 0 || pos.y >= ROWS;
+    }
+    collidesSelf() {
+      const head = this.head();
+      return this.segments.slice(1).some(s => s.x === head.x && s.y === head.y);
+    }
+    reset() {
+      this.segments = [
+        { x: 9, y: 10 },
+        { x: 8, y: 10 },
+        { x: 7, y: 10 }
+      ];
+      this.growPending = false;
+    }
+  }
+
+  class Apple {
+    constructor() { this.position = { x: 15, y: 10 }; }
+    respawn(snake) {
+      let pos;
+      do {
+        pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+      } while (snake.collidesWith(pos));
+      this.position = pos;
+    }
+  }
+
+  const DIR = {
+    UP:    { x: 0, y: -1 },
+    DOWN:  { x: 0, y: 1 },
+    LEFT:  { x: -1, y: 0 },
+    RIGHT: { x: 1, y: 0 }
+  };
+
+  function isOpposite(d1, d2) { return d1.x + d2.x === 0 && d1.y + d2.y === 0; }
+
+  function initGame() {
+    snake = new Snake();
+    apple = new Apple();
+    apple.respawn(snake);
+    direction = DIR.RIGHT;
+    nextDirection = DIR.RIGHT;
+    score = 0;
+    scoreDisplay.textContent = '0';
+    state = GameState.PLAYING;
+    canvas.classList.remove('glitch');
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(update, TICK_MS);
+  }
+
+  function update() {
+    if (state !== GameState.PLAYING) return;
+
+    direction = nextDirection;
+    const head = snake.move(direction);
+
+    if (snake.collidesWall(head) || snake.collidesSelf()) {
+      gameOver();
+      return;
+    }
+
+    if (head.x === apple.position.x && head.y === apple.position.y) {
+      snake.grow();
+      score++;
+      scoreDisplay.textContent = score;
+      apple.respawn(snake);
+    }
+
+    draw();
+  }
+
+  function gameOver() {
+    state = GameState.GAME_OVER;
+    clearInterval(gameLoop);
+    canvas.classList.add('glitch');
+    draw();
+    setTimeout(() => canvas.classList.remove('glitch'), 500);
+  }
+
+  function restartGame() {
+    if (gameLoop) clearInterval(gameLoop);
+    initGame();
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, 400, 400);
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, 400, 400);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,255,65,0.04)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= COLS; i++) {
+      ctx.beginPath(); ctx.moveTo(i * GRID, 0); ctx.lineTo(i * GRID, 400); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * GRID); ctx.lineTo(400, i * GRID); ctx.stroke();
+    }
+
+    // Apple
+    ctx.shadowColor = '#ff0040'; ctx.shadowBlur = 15;
+    ctx.fillStyle = '#ff0040';
+    ctx.beginPath();
+    ctx.arc(apple.position.x * GRID + GRID/2, apple.position.y * GRID + GRID/2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Snake
+    snake.segments.forEach((seg, i) => {
+      const isHead = i === 0;
+      ctx.shadowColor = '#00ff41';
+      ctx.shadowBlur = isHead ? 20 : 10;
+      ctx.fillStyle = isHead ? '#00ff41' : '#00cc33';
+      const pad = 1;
+      ctx.fillRect(seg.x * GRID + pad, seg.y * GRID + pad, GRID - pad*2, GRID - pad*2);
+    });
+    ctx.shadowBlur = 0;
+
+    // Overlay
+    if (state === GameState.GAME_OVER) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, 400, 400);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.shadowColor = '#ff0040'; ctx.shadowBlur = 30;
+      ctx.fillStyle = '#ff0040';
+      ctx.font = 'bold 28px "Courier New", monospace';
+      ctx.fillText('GAME OVER', 200, 160);
+
+      ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 15;
+      ctx.fillStyle = '#00ff41';
+      ctx.font = '14px "Courier New", monospace';
+      ctx.fillText('▶ RESTART', 200, 240);
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = 'rgba(0,255,65,0.3)';
+      ctx.font = '11px "Courier New", monospace';
+      ctx.fillText('press ENTER or click', 200, 280);
+    }
+
+    if (state === GameState.MENU) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, 400, 400);
+
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 30;
+      ctx.fillStyle = '#00ff41';
+      ctx.font = 'bold 32px "Courier New", monospace';
+      ctx.fillText('SNAKE', 200, 170);
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = 'rgba(0,255,65,0.5)';
+      ctx.font = '13px "Courier New", monospace';
+      ctx.fillText('press ENTER to start', 200, 230);
+    }
+  }
+
+  function handleKeydown(e) {
+    const key = e.key;
+    e.preventDefault();
+
+    if (key === 'Enter') {
+      if (state === GameState.MENU) { initGame(); return; }
+      if (state === GameState.GAME_OVER) { restartGame(); return; }
+    }
+
+    if (state !== GameState.PLAYING) return;
+
+    let newDir;
+    if (key === 'ArrowUp') newDir = DIR.UP;
+    else if (key === 'ArrowDown') newDir = DIR.DOWN;
+    else if (key === 'ArrowLeft') newDir = DIR.LEFT;
+    else if (key === 'ArrowRight') newDir = DIR.RIGHT;
+    else return;
+
+    if (!isOpposite(newDir, direction)) nextDirection = newDir;
+  }
+
+  // Events
+  document.addEventListener('keydown', handleKeydown);
+  canvas.addEventListener('click', (e) => {
+    if (state === GameState.MENU) { initGame(); }
+    else if (state === GameState.GAME_OVER) { restartGame(); }
+  });
+
+  // Initial draw
+  draw();
+</script>
+</body>
+</html>
